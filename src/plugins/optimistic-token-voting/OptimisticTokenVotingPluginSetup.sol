@@ -159,15 +159,6 @@ contract OptimisticTokenVotingPluginSetup is PluginSetup {
         returns (PermissionLib.MultiTargetPermission[] memory permissions)
     {
         // Prepare permissions.
-        uint256 helperLength = _payload.currentHelpers.length;
-        if (helperLength != 1) {
-            revert WrongHelpersArrayLength({length: helperLength});
-        }
-
-        // token can be either GovernanceERC20, GovernanceWrappedERC20, or IVotesUpgradeable, which
-        // does not follow the GovernanceERC20 and GovernanceWrappedERC20 standard.
-        address token = _payload.currentHelpers[0];
-
         permissions = new PermissionLib.MultiTargetPermission[](3);
 
         // Set permissions to be Revoked.

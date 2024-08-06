@@ -1,8 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-dentifier: AGPL-3.0-or-later
 
 pragma solidity 0.8.17;
 
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import {
+    IERC5805Upgradeable,
+    IVotesUpgradeable
+} from "@openzeppelin/contracts-upgradeable/interfaces/IERC5805Upgradeable.sol";
+import {IERC6372Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC6372Upgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
@@ -10,21 +14,27 @@ import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 
-import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
+import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 
 /// @title TokenVoting
 /// @author Aragon Association - 2021-2023
 /// @notice The majority voting implementation using an [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes) compatible governance token.
 /// @dev This contract inherits from `MajorityVotingBase` and implements the `IMajorityVoting` interface.
-contract TokenVoting is IMembership, MajorityVotingBase {
+contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 internal constant TOKEN_VOTING_INTERFACE_ID = this.initialize.selector ^ this.getVotingToken.selector;
 
     /// @notice An [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes) compatible contract referencing the token being used for voting.
-    IVotesUpgradeable private votingToken;
+    IERC5805Upgradeable private votingToken;
+
+    /// @notice Minimum Participation.
+    uint256 public quorum;
+
+    /// @notice Total supply of underlying token in voting token.
+    uint256 public underlyingTotalSupply;
 
     /// @notice Thrown if the voting power is zero
     error NoVotingPower();
@@ -34,13 +44,20 @@ contract TokenVoting is IMembership, MajorityVotingBase {
     /// @param _dao The IDAO interface of the associated DAO.
     /// @param _votingSettings The voting settings.
     /// @param _token The [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token used for voting.
-    function initialize(IDAO _dao, VotingSettings calldata _votingSettings, IVotesUpgradeable _token)
-        external
-        initializer
-    {
+    /// @param _quorum The minimum participation of a proposal.
+    function initialize(
+        IDAO _dao,
+        VotingSettings calldata _votingSettings,
+        IVotesUpgradeable _token,
+        uint256 _quorum,
+        uint256 _underlyingTotalSupply
+    ) external initializer {
         __MajorityVotingBase_init(_dao, _votingSettings);
 
-        votingToken = _token;
+        votingToken = IERC5805Upgradeable(address(_token));
+
+        quorum = _quorum;
+        underlyingTotalSupply = _underlyingTotalSupply;
 
         emit MembershipContractAnnounced({definingContract: address(_token)});
     }
@@ -61,8 +78,50 @@ contract TokenVoting is IMembership, MajorityVotingBase {
     }
 
     /// @inheritdoc MajorityVotingBase
-    function totalVotingPower(uint256 _blockNumber) public view override returns (uint256) {
-        return votingToken.getPastTotalSupply(_blockNumber);
+    function totalVotingPower(uint256) public view override returns (uint256) {
+        return underlyingTotalSupply;
+    }
+
+    /// @dev Clock (as specified in EIP-6372) is set to match the token's clock. Fallback to block numbers if the token
+    /// does not implement EIP-6372.
+    function clock() public view virtual override returns (uint48) {
+        try votingToken.clock() returns (uint48 timepoint) {
+            return timepoint;
+        } catch {
+            return block.number.toUint48();
+        }
+    }
+
+    /// @dev Machine-readable description of the clock as specified in EIP-6372.
+    /// solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() public view virtual override returns (string memory) {
+        try votingToken.CLOCK_MODE() returns (string memory clockmode) {
+            return clockmode;
+        } catch {
+            return "mode=blocknumber&from=default";
+        }
+    }
+
+    /// @notice Updates the Voting setting.
+    /// @param _quorum The new quorum settings.
+    /// @param _underlyingTotalSupply The new total supply of underlying token in voting token.
+    function updateVotingSettings(uint256 _quorum, uint256 _underlyingTotalSupply)
+        external
+        virtual
+        auth(UPDATE_VOTING_SETTINGS_PERMISSION_ID)
+    {
+        quorum = _quorum;
+        underlyingTotalSupply = _underlyingTotalSupply;
+        uint256 _minParticipation = quorum * RATIO_BASE / underlyingTotalSupply;
+        _updateVotingSettings(
+            VotingSettings({
+                votingMode: votingMode(),
+                supportThreshold: supportThreshold(),
+                minParticipation: _minParticipation.toUint32(),
+                minDuration: minDuration(),
+                minProposerVotingPower: minProposerVotingPower()
+            })
+        );
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -90,16 +149,7 @@ contract TokenVoting is IMembership, MajorityVotingBase {
             }
         }
 
-        uint256 snapshotBlock;
-        unchecked {
-            snapshotBlock = block.number - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
-        }
-
-        uint256 totalVotingPower_ = totalVotingPower(snapshotBlock);
-
-        if (totalVotingPower_ == 0) {
-            revert NoVotingPower();
-        }
+        uint48 snapshotTimepoint = clock() - 1; // The snapshot timepoint must be mined already to protect the transaction against backrunning transactions causing census changes.
 
         (_startDate, _endDate) = _validateProposalDates(_startDate, _endDate);
 
@@ -117,10 +167,11 @@ contract TokenVoting is IMembership, MajorityVotingBase {
 
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
-        proposal_.parameters.snapshotBlock = snapshotBlock.toUint64();
+        proposal_.parameters.snapshotBlock = (block.number - 1).toUint64();
+        proposal_.parameters.snapshotTimepoint = snapshotTimepoint;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
-        proposal_.parameters.minVotingPower = _applyRatioCeiled(totalVotingPower_, minParticipation());
+        proposal_.parameters.minVotingPower = quorum;
 
         // Reduce costs
         if (_allowFailureMap != 0) {
@@ -153,7 +204,7 @@ contract TokenVoting is IMembership, MajorityVotingBase {
         Proposal storage proposal_ = proposals[_proposalId];
 
         // This could re-enter, though we can assume the governance token is not malicious
-        uint256 votingPower = votingToken.getPastVotes(_voter, proposal_.parameters.snapshotBlock);
+        uint256 votingPower = votingToken.getPastVotes(_voter, proposal_.parameters.snapshotTimepoint);
         VoteOption state = proposal_.voters[_voter];
 
         // If voter had previously voted, decrease count
@@ -203,7 +254,7 @@ contract TokenVoting is IMembership, MajorityVotingBase {
         }
 
         // The voter has no voting power.
-        if (votingToken.getPastVotes(_account, proposal_.parameters.snapshotBlock) == 0) {
+        if (votingToken.getPastVotes(_account, proposal_.parameters.snapshotTimepoint) == 0) {
             return false;
         }
 
@@ -221,5 +272,5 @@ contract TokenVoting is IMembership, MajorityVotingBase {
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting down storage in the inheritance chain.
     /// https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-    uint256[49] private __gap;
+    uint256[47] private __gap;
 }

@@ -135,11 +135,6 @@ contract TokenVotingSetup is PluginSetup {
         returns (PermissionLib.MultiTargetPermission[] memory permissions)
     {
         // Prepare permissions.
-        uint256 helperLength = _payload.currentHelpers.length;
-        if (helperLength != 1) {
-            revert WrongHelpersArrayLength({length: helperLength});
-        }
-
         permissions = new PermissionLib.MultiTargetPermission[](3);
 
         // Set permissions to be Revoked.
