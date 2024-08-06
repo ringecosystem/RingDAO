@@ -1,5 +1,4 @@
-.PHONY: all fmt clean test
-.PHONY: tools foundry sync
+.PHONY: all fmt clean test sync foundry
 
 -include .env
 
