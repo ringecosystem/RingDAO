@@ -36,8 +36,8 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
     /// @notice Total supply of underlying token in voting token.
     uint256 public underlyingTotalSupply;
 
-    /// @notice Thrown if the voting power is zero
-    error NoVotingPower();
+    /// @notice Thrown if the underlying voting power < quorum
+    error NoEnoughVotingPower();
 
     /// @notice Initializes the component.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
@@ -58,6 +58,8 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
 
         quorum = _quorum;
         underlyingTotalSupply = _underlyingTotalSupply;
+
+        _updateMinParticipation(_quorum, _underlyingTotalSupply);
 
         emit MembershipContractAnnounced({definingContract: address(_token)});
     }
@@ -102,17 +104,8 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
         }
     }
 
-    /// @notice Updates the Voting setting.
-    /// @param _quorum The new quorum settings.
-    /// @param _underlyingTotalSupply The new total supply of underlying token in voting token.
-    function updateVotingSettings(uint256 _quorum, uint256 _underlyingTotalSupply)
-        external
-        virtual
-        auth(UPDATE_VOTING_SETTINGS_PERMISSION_ID)
-    {
-        quorum = _quorum;
-        underlyingTotalSupply = _underlyingTotalSupply;
-        uint256 _minParticipation = quorum * RATIO_BASE / underlyingTotalSupply;
+    function _updateMinParticipation(uint256 _quorum, uint256 _underlyingTotalSupply) internal {
+        uint256 _minParticipation = _quorum * RATIO_BASE / _underlyingTotalSupply;
         _updateVotingSettings(
             VotingSettings({
                 votingMode: votingMode(),
@@ -122,6 +115,19 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
                 minProposerVotingPower: minProposerVotingPower()
             })
         );
+    }
+
+    /// @notice Updates the Voting setting.
+    /// @param _quorum The new quorum settings.
+    /// @param _underlyingTotalSupply The new total supply of underlying token in voting token.
+    function updateMinParticipation(uint256 _quorum, uint256 _underlyingTotalSupply)
+        external
+        virtual
+        auth(UPDATE_VOTING_SETTINGS_PERMISSION_ID)
+    {
+        quorum = _quorum;
+        underlyingTotalSupply = _underlyingTotalSupply;
+        _updateMinParticipation(_quorum, _underlyingTotalSupply);
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -150,6 +156,12 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
         }
 
         uint48 snapshotTimepoint = clock() - 1; // The snapshot timepoint must be mined already to protect the transaction against backrunning transactions causing census changes.
+
+        uint256 totalVotingPower_ = totalVotingPower(snapshotTimepoint);
+
+        if (totalVotingPower_ < quorum) {
+            revert NoVotingPower();
+        }
 
         (_startDate, _endDate) = _validateProposalDates(_startDate, _endDate);
 
