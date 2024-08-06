@@ -49,45 +49,13 @@
               "internalType": "address",
               "name": "token",
               "type": "address",
-              "description": "The token address. If this is `address(0)`, a new `GovernanceERC20` token is deployed. If not, the existing token is wrapped as an `GovernanceWrappedERC20`."
+              "description": "The voting token contract address."
             },
-            {
-              "internalType": "string",
-              "name": "name",
-              "type": "string",
-              "description": "The token name. This parameter is only relevant if the token address is `address(0)`."
-            },
-            {
-              "internalType": "string",
-              "name": "symbol",
-              "type": "string",
-              "description": "The token symbol. This parameter is only relevant if the token address is `address(0)`."
-            }
           ],
           "internalType": "struct TokenVotingSetup.TokenSettings",
           "name": "tokenSettings",
           "type": "tuple",
           "description": "The token settings that either specify an existing ERC-20 token (`token = address(0)`) or the name and symbol of a new `GovernanceERC20` token to be created."
-        },
-        {
-          "components": [
-            {
-              "internalType": "address[]",
-              "name": "receivers",
-              "type": "address[]",
-              "description": "The receivers of the tokens."
-            },
-            {
-              "internalType": "uint256[]",
-              "name": "amounts",
-              "type": "uint256[]",
-              "description": "The amounts of tokens to be minted for each receiver."
-            }
-          ],
-          "internalType": "struct GovernanceERC20.MintSettings",
-          "name": "mintSettings",
-          "type": "tuple",
-          "description": "The token mint settings struct containing the `receivers` and `amounts`."
         }
       ],
       "prepareUpdate": {
