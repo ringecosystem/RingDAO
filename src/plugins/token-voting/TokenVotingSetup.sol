@@ -52,7 +52,7 @@ contract TokenVotingSetup is PluginSetup {
     /// @param length The array length of passed helpers.
     error WrongHelpersArrayLength(uint256 length);
 
-    /// @notice The contract constructor deploying the plugin implementation contract and receiving the governance token contract.
+    /// @notice The contract constructor deploying the plugin implementation contract.
     constructor() {
         tokenVotingBase = new TokenVoting();
     }
