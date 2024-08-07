@@ -4,15 +4,18 @@ pragma solidity 0.8.17;
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 
-import {DAOFactory} from "@aragon/osx/framework/dao/DAOFactory.sol";
+import {DAO, DAOFactory} from "@aragon/osx/framework/dao/DAOFactory.sol";
 import {PluginRepoFactory} from "@aragon/osx/framework/plugin/repo/PluginRepoFactory.sol";
 import {PluginRepo} from "@aragon/osx/framework/plugin/repo/PluginRepo.sol";
 import {hashHelpers, PluginSetupRef} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessorHelpers.sol";
+import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 
-import {MultisigPluginSetup} from "../src/plugins/multisig/MultisigPluginSetup.sol";
+import {MultisigPluginSetup, Multisig} from "../src/plugins/multisig/MultisigPluginSetup.sol";
 import {TokenVotingPluginSetup} from "../src/plugins/token-voting/TokenVotingPluginSetup.sol";
-import {OptimisticTokenVotingPluginSetup} from
-    "../src/plugins/optimistic-token-voting/OptimisticTokenVotingPluginSetup.sol";
+import {
+    OptimisticTokenVotingPluginSetup,
+    OptimisticTokenVotingPlugin
+} from "../src/plugins/optimistic-token-voting/OptimisticTokenVotingPluginSetup.sol";
 
 contract Deploy is Script {
     address gRING = 0xe59B1124d36B51C42D5d66C5F5a9Be92aE1Ce204;
@@ -39,8 +42,8 @@ contract Deploy is Script {
     function run() public {
         vm.startBroadcast();
 
-        console.log("Chain ID:", block.chainid);
-        console.log("Deploying from:", msg.sender);
+        console2.log("Chain ID:", block.chainid);
+        console2.log("Deploying from:", msg.sender);
 
         // 1. Deploying the Plugin Setup
         deployPluginSetup();
@@ -119,14 +122,14 @@ contract Deploy is Script {
         return DAOFactory.DAOSettings(address(0), "", string.concat("governance-", vm.toString(block.timestamp)), "");
     }
 
-    function getPluginSettings() public pure returns (DAOFactory.PluginSettings[] memory pluginSettings) {
+    function getPluginSettings() public view returns (DAOFactory.PluginSettings[] memory pluginSettings) {
         pluginSettings = new DAOFactory.PluginSettings[](3);
         pluginSettings[0] = getMultisigPluginSetting();
         pluginSettings[1] = getTokenVotingPluginSetting();
         pluginSettings[2] = getOptimisticTokenVotingPluginSetting();
     }
 
-    function getMultisigPluginSetting() public pure returns (DAOFactory.PluginSettings memory) {
+    function getMultisigPluginSetting() public view returns (DAOFactory.PluginSettings memory) {
         address[] memory members = new address[](1);
         members[0] = 0x0f14341A7f464320319025540E8Fe48Ad0fe5aec;
         bytes memory pluginSettingsData = abi.encode(
@@ -137,7 +140,7 @@ contract Deploy is Script {
         return DAOFactory.PluginSettings(PluginSetupRef(tag, multisigPluginRepo), pluginSettingsData);
     }
 
-    function getTokenVotingPluginSetting() public pure returns (DAOFactory.PluginSettings memory) {
+    function getTokenVotingPluginSetting() public view returns (DAOFactory.PluginSettings memory) {
         bytes memory pluginSettingsData = abi.encode(
             MajorityVotingBase.VotingSettings({
                 votingMode: MajorityVotingBase.VotingMode.Standard,
@@ -152,10 +155,9 @@ contract Deploy is Script {
         return DAOFactory.PluginSettings(PluginSetupRef(tag, tokenVotingPluginRepo), pluginSettingsData);
     }
 
-    function getOptimisticTokenVotingPluginSetting() public pure returns (DAOFactory.PluginSettings memory) {
+    function getOptimisticTokenVotingPluginSetting() public view returns (DAOFactory.PluginSettings memory) {
         bytes memory pluginSettingsData = abi.encode(
             OptimisticTokenVotingPlugin.OptimisticGovernanceSettings({
-                votingMode: MajorityVotingBase.VotingMode.Standard,
                 minVetoRatio: 500_000, // 50%
                 minDuration: 10 minutes
             }),
