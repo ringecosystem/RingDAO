@@ -19,10 +19,10 @@ import {IGovernanceWrappedERC20} from "@aragon/osx/token/ERC20/governance/IGover
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 import {TokenVoting} from "./TokenVoting.sol";
 
-/// @title TokenVotingSetup
+/// @title TokenVotingPluginSetup
 /// @author Aragon Association - 2022-2023
 /// @notice The setup contract of the `TokenVoting` plugin.
-contract TokenVotingSetup is PluginSetup {
+contract TokenVotingPluginSetup is PluginSetup {
     using Address for address;
     using Clones for address;
     using ERC165Checker for address;

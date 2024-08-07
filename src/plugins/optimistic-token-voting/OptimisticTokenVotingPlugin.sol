@@ -20,7 +20,7 @@ import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {RATIO_BASE, RatioOutOfBounds} from "@aragon/osx/plugins/utils/Ratio.sol";
 
-/// @title OptimisticTokenVotingPlugin
+/// @title OptimisticTokenVotingPlugin - Release 1, Build 1
 /// @author Aragon Association - 2022-2023
 /// @notice The abstract implementation of optimistic majority plugins.
 ///
@@ -39,11 +39,9 @@ contract OptimisticTokenVotingPlugin is
     /// @notice A container for the optimistic majority settings that will be applied as parameters on proposal creation.
     /// @param minVetoRatio The support threshold value. Its value has to be in the interval [0, 10^6] defined by `RATIO_BASE = 10**6`.
     /// @param minDuration The minimum duration of the proposal vote in seconds.
-    /// @param minProposerVotingPower The minimum vetoing power required to create a proposal.
     struct OptimisticGovernanceSettings {
         uint32 minVetoRatio;
         uint64 minDuration;
-        uint256 minProposerVotingPower;
     }
 
     /// @notice A container for proposal-related information.
@@ -102,8 +100,7 @@ contract OptimisticTokenVotingPlugin is
     /// @notice Emitted when the vetoing settings are updated.
     /// @param minVetoRatio The support threshold value.
     /// @param minDuration The minimum duration of the proposal vote in seconds.
-    /// @param minProposerVotingPower The minimum vetoing power required to create a proposal.
-    event OptimisticGovernanceSettingsUpdated(uint32 minVetoRatio, uint64 minDuration, uint256 minProposerVotingPower);
+    event OptimisticGovernanceSettingsUpdated(uint32 minVetoRatio, uint64 minDuration);
 
     /// @notice Emitted when a veto is cast by a voter.
     /// @param proposalId The ID of the proposal.
@@ -277,11 +274,6 @@ contract OptimisticTokenVotingPlugin is
         return governanceSettings.minDuration;
     }
 
-    /// @inheritdoc IOptimisticTokenVoting
-    function minProposerVotingPower() public view virtual returns (uint256) {
-        return governanceSettings.minProposerVotingPower;
-    }
-
     /// @notice Returns all information for a proposal vote by its ID.
     /// @param _proposalId The ID of the proposal.
     /// @return open Whether the proposal is open or not.
@@ -321,21 +313,6 @@ contract OptimisticTokenVotingPlugin is
         uint64 _startDate,
         uint64 _endDate
     ) external auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
-        // Check that either `_msgSender` owns enough tokens or has enough voting power from being a delegatee.
-        {
-            uint256 minProposerVotingPower_ = minProposerVotingPower();
-
-            if (minProposerVotingPower_ != 0) {
-                // Because of the checks in `OptimisticTokenVotingSetup`, we can assume that `votingToken` is an [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token.
-                if (
-                    votingToken.getVotes(_msgSender()) < minProposerVotingPower_
-                        && IERC20Upgradeable(address(votingToken)).balanceOf(_msgSender()) < minProposerVotingPower_
-                ) {
-                    revert ProposalCreationForbidden(_msgSender());
-                }
-            }
-        }
-
         uint48 snapshotTimepoint = clock() - 1; // The snapshot timepoint must be mined already to protect the transaction against backrunning transactions causing census changes.
 
         uint256 totalVotingPower_ = totalVotingPower(snapshotTimepoint);
@@ -451,8 +428,7 @@ contract OptimisticTokenVotingPlugin is
 
         emit OptimisticGovernanceSettingsUpdated({
             minVetoRatio: _governanceSettings.minVetoRatio,
-            minDuration: _governanceSettings.minDuration,
-            minProposerVotingPower: _governanceSettings.minProposerVotingPower
+            minDuration: _governanceSettings.minDuration
         });
     }
 
@@ -512,5 +488,5 @@ contract OptimisticTokenVotingPlugin is
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables without shifting down storage in the inheritance chain (see [OpenZeppelin's guide about storage gaps](https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps)).
-    uint256[45] private __gap;
+    uint256[46] private __gap;
 }

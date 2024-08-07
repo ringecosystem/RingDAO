@@ -27,10 +27,6 @@ interface IOptimisticTokenVoting {
     /// @return The minimum duration parameter.
     function minDuration() external view returns (uint64);
 
-    /// @notice Returns the minimum vetoing power required to create a proposal stored in the vetoing settings.
-    /// @return The minimum vetoing power required to create a proposal.
-    function minProposerVotingPower() external view returns (uint256);
-
     /// @notice Creates a new optimistic proposal.
     /// @param _metadata The metadata of the proposal.
     /// @param _actions The actions that will be executed after the proposal passes.
