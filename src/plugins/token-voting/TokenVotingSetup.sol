@@ -32,8 +32,10 @@ contract TokenVotingSetup is PluginSetup {
 
     /// @notice The token settings struct.
     /// @param addr The voting token contract address.
+    /// @param underlyingTotalSupply Total supply of underlying token in voting token.
     struct TokenSettings {
         address addr;
+        uint256 underlyingTotalSupply;
     }
 
     /// @notice Thrown if token address is passed which is not a token.
@@ -91,7 +93,10 @@ contract TokenVotingSetup is PluginSetup {
         // Prepare and deploy plugin proxy.
         plugin = createERC1967Proxy(
             address(tokenVotingBase),
-            abi.encodeWithSelector(TokenVoting.initialize.selector, _dao, votingSettings, token)
+            abi.encodeCall(
+                TokenVoting.initialize,
+                (IDAO(_dao), votingSettings, IVotesUpgradeable(token), tokenSettings.underlyingTotalSupply)
+            )
         );
 
         // Prepare permissions

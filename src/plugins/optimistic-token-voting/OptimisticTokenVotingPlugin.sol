@@ -2,11 +2,15 @@
 
 pragma solidity 0.8.17;
 
+import {
+    IERC5805Upgradeable,
+    IVotesUpgradeable
+} from "@openzeppelin/contracts-upgradeable/interfaces/IERC5805Upgradeable.sol";
+import {IERC6372Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC6372Upgradeable.sol";
 import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {IOptimisticTokenVoting} from "./IOptimisticTokenVoting.sol";
 
@@ -24,6 +28,7 @@ import {RATIO_BASE, RatioOutOfBounds} from "@aragon/osx/plugins/utils/Ratio.sol"
 contract OptimisticTokenVotingPlugin is
     IOptimisticTokenVoting,
     IMembership,
+    IERC6372Upgradeable,
     Initializable,
     ERC165Upgradeable,
     PluginUUPSUpgradeable,
@@ -61,11 +66,13 @@ contract OptimisticTokenVotingPlugin is
     /// @param startDate The start date of the proposal vote.
     /// @param endDate The end date of the proposal vote.
     /// @param snapshotBlock The number of the block prior to the proposal creation.
+    /// @param snapshotTimepoint The timepoint to the proposal creation.
     /// @param minVetoVotingPower The minimum voting power needed to defeat the proposal.
     struct ProposalParameters {
         uint64 startDate;
         uint64 endDate;
         uint64 snapshotBlock;
+        uint48 snapshotTimepoint;
         uint256 minVetoVotingPower;
     }
 
@@ -81,13 +88,16 @@ contract OptimisticTokenVotingPlugin is
         this.initialize.selector ^ this.getProposal.selector ^ this.updateOptimisticGovernanceSettings.selector;
 
     /// @notice An [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes) compatible contract referencing the token being used for voting.
-    IVotesUpgradeable private votingToken;
+    IERC5805Upgradeable private votingToken;
 
     /// @notice The struct storing the governance settings.
     OptimisticGovernanceSettings private governanceSettings;
 
     /// @notice A mapping between proposal IDs and proposal information.
     mapping(uint256 => Proposal) internal proposals;
+
+    /// @notice Total supply of underlying token in voting token.
+    uint256 public underlyingTotalSupply;
 
     /// @notice Emitted when the vetoing settings are updated.
     /// @param minVetoRatio The support threshold value.
@@ -136,13 +146,17 @@ contract OptimisticTokenVotingPlugin is
     /// @param _dao The IDAO interface of the associated DAO.
     /// @param _governanceSettings The vetoing settings.
     /// @param _token The [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token used for voting.
-    function initialize(IDAO _dao, OptimisticGovernanceSettings calldata _governanceSettings, IVotesUpgradeable _token)
-        external
-        initializer
-    {
+    function initialize(
+        IDAO _dao,
+        OptimisticGovernanceSettings calldata _governanceSettings,
+        IVotesUpgradeable _token,
+        uint256 _underlyingTotalSupply
+    ) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
 
-        votingToken = _token;
+        votingToken = IERC5805Upgradeable(address(_token));
+
+        underlyingTotalSupply = _underlyingTotalSupply;
 
         _updateOptimisticGovernanceSettings(_governanceSettings);
         emit MembershipContractAnnounced({definingContract: address(_token)});
@@ -169,8 +183,28 @@ contract OptimisticTokenVotingPlugin is
     }
 
     /// @inheritdoc IOptimisticTokenVoting
-    function totalVotingPower(uint256 _blockNumber) public view returns (uint256) {
-        return votingToken.getPastTotalSupply(_blockNumber);
+    function totalVotingPower(uint256) public view returns (uint256) {
+        return underlyingTotalSupply;
+    }
+
+    /// @dev Clock (as specified in EIP-6372) is set to match the token's clock. Fallback to block numbers if the token
+    /// does not implement EIP-6372.
+    function clock() public view virtual override returns (uint48) {
+        try votingToken.clock() returns (uint48 timepoint) {
+            return timepoint;
+        } catch {
+            return block.number.toUint48();
+        }
+    }
+
+    /// @dev Machine-readable description of the clock as specified in EIP-6372.
+    /// solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() public view virtual override returns (string memory) {
+        try votingToken.CLOCK_MODE() returns (string memory clockmode) {
+            return clockmode;
+        } catch {
+            return "mode=blocknumber&from=default";
+        }
     }
 
     /// @inheritdoc IMembership
@@ -199,7 +233,7 @@ contract OptimisticTokenVotingPlugin is
         }
 
         // The voter has no voting power.
-        if (votingToken.getPastVotes(_voter, proposal_.parameters.snapshotBlock) == 0) {
+        if (votingToken.getPastVotes(_voter, proposal_.parameters.snapshotTimepoint) == 0) {
             return false;
         }
 
@@ -302,12 +336,9 @@ contract OptimisticTokenVotingPlugin is
             }
         }
 
-        uint256 snapshotBlock;
-        unchecked {
-            snapshotBlock = block.number - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
-        }
+        uint48 snapshotTimepoint = clock() - 1; // The snapshot timepoint must be mined already to protect the transaction against backrunning transactions causing census changes.
 
-        uint256 totalVotingPower_ = totalVotingPower(snapshotBlock);
+        uint256 totalVotingPower_ = totalVotingPower(snapshotTimepoint);
 
         if (totalVotingPower_ == 0) {
             revert NoVotingPower();
@@ -329,7 +360,8 @@ contract OptimisticTokenVotingPlugin is
 
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
-        proposal_.parameters.snapshotBlock = snapshotBlock.toUint64();
+        proposal_.parameters.snapshotBlock = (block.number - 1).toUint64();
+        proposal_.parameters.snapshotTimepoint = snapshotTimepoint;
         proposal_.parameters.minVetoVotingPower = _applyRatioCeiled(totalVotingPower_, minVetoRatio());
 
         // Save gas
@@ -356,7 +388,7 @@ contract OptimisticTokenVotingPlugin is
         Proposal storage proposal_ = proposals[_proposalId];
 
         // This could re-enter, though we can assume the governance token is not malicious
-        uint256 votingPower = votingToken.getPastVotes(_voter, proposal_.parameters.snapshotBlock);
+        uint256 votingPower = votingToken.getPastVotes(_voter, proposal_.parameters.snapshotTimepoint);
 
         // Not checking if the voter already voted, since canVeto() above already did
 
@@ -376,6 +408,16 @@ contract OptimisticTokenVotingPlugin is
         proposals[_proposalId].executed = true;
 
         _executeProposal(dao(), _proposalId, proposals[_proposalId].actions, proposals[_proposalId].allowFailureMap);
+    }
+
+    /// @notice Updates the total supply of underlying token in voting token.
+    /// @param _underlyingTotalSupply The new total supply of underlying token in voting token.
+    function updateUnderlyingTotalSupply(uint256 _underlyingTotalSupply)
+        external
+        virtual
+        auth(UPDATE_OPTIMISTIC_GOVERNANCE_SETTINGS_PERMISSION_ID)
+    {
+        underlyingTotalSupply = _underlyingTotalSupply;
     }
 
     /// @notice Updates the governance settings.

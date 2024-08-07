@@ -37,7 +37,13 @@
               "internalType": "address",
               "name": "token",
               "type": "address",
-              "description": "The token address. If this is `address(0)`, a new `GovernanceERC20` token is deployed. If not, the existing token is wrapped as an `GovernanceWrappedERC20`."
+              "description": "The voting token address."
+            },
+            {
+              "internalType": "uint256",
+              "name": "underlyingTotalSupply",
+              "type": "uint256",
+              "description": "Total supply of underlying token in voting token."
             }
           ],
           "internalType": "struct OptimisticTokenVotingPluginSetup.TokenSettings",

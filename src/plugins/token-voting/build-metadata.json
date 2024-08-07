@@ -51,6 +51,12 @@
               "type": "address",
               "description": "The voting token contract address."
             },
+            {
+              "internalType": "uint256",
+              "name": "underlyingTotalSupply",
+              "type": "uint256",
+              "description": "Total supply of underlying token in voting token."
+            }
           ],
           "internalType": "struct TokenVotingSetup.TokenSettings",
           "name": "tokenSettings",

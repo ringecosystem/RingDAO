@@ -31,8 +31,10 @@ contract OptimisticTokenVotingPluginSetup is PluginSetup {
 
     /// @notice The token settings struct.
     /// @param addr The voting token contract address.
+    /// @param underlyingTotalSupply Total supply of underlying token in voting token.
     struct TokenSettings {
         address addr;
+        uint256 underlyingTotalSupply;
     }
 
     /// @notice Thrown if token address is passed which is not a token.
@@ -96,7 +98,8 @@ contract OptimisticTokenVotingPluginSetup is PluginSetup {
         plugin = createERC1967Proxy(
             address(optimisticTokenVotingPluginBase),
             abi.encodeCall(
-                OptimisticTokenVotingPlugin.initialize, (IDAO(_dao), votingSettings, IVotesUpgradeable(token))
+                OptimisticTokenVotingPlugin.initialize,
+                (IDAO(_dao), votingSettings, IVotesUpgradeable(token), tokenSettings.underlyingTotalSupply)
             )
         );
 
