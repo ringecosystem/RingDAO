@@ -21,7 +21,7 @@ This plugin is an adapted version of Aragon's [Optimistic Token Voting plugin](h
 
 Only addresses that have been granted `PROPOSER_PERMISSION_ID` on the plugin can create proposals. These adresses belong to the multisig's governed by the Security Council. 
 
-Proposals can only be executed when the veto threshold hasn't been reached after a given period of time.
+Proposals can only be executed when the veto threshold hasn't been reached after a minimum period of time.
 
 The governance settings need to be defined when the plugin is installed but the DAO can update them at any time.
 
@@ -35,8 +35,6 @@ The governance settings need to be defined when the plugin is installed but the 
 ## Multisig
 
 It allows the Security Council members to create and approve proposals. After a certain minimum of approvals is met, proposals can be relayed to the [Optimistic Token Voting plugin](#optimistic-token-voting-plugin) only.
-
-The ability to relay proposals to the [Optimistic Token Voting plugin](#optimistic-token-voting-plugin) is restricted by a [permission condition](src/conditions/StandardProposalCondition.sol), which ensures that a minimum veto period is defined as part of the parameters. 
 
 ![Standard proposal flow](./img/std-proposal-flow.png)
 
