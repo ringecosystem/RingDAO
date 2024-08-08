@@ -32,7 +32,7 @@ The governance settings need to be defined when the plugin is installed but the 
 - The DAO can update the plugin settings
 - The DAO can upgrade the plugin
 
-## Multisig
+## Standard Multisig
 
 It allows the Security Council members to create and approve proposals. After a certain minimum of approvals is met, proposals can be relayed to the [Optimistic Token Voting plugin](#optimistic-token-voting-plugin) only.
 
@@ -43,6 +43,17 @@ It allows the Security Council members to create and approve proposals. After a 
 - Only members can create proposals
 - Only members can approve
 - The plugin can only create proposals on the [Optimistic Token Voting plugin](#optimistic-token-voting-plugin) provided that the `duration` is equal or greater than the minimum defined
+- The DAO can update the plugin settings
+
+## Emergency Multisig
+
+Like before, this plugin allows Security Council members to create and approve proposals. If a super majority approves, proposals can be executed immediately.
+
+### Permissions
+
+- Only members can create proposals
+- Only members can approve
+- The plugin can execute actions on the DAO immediately
 - The DAO can update the plugin settings
 
 ## DO's and DONT's
