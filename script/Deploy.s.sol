@@ -18,7 +18,8 @@ import {
 } from "../src/plugins/optimistic-token-voting/OptimisticTokenVotingPluginSetup.sol";
 
 contract Deploy is Script {
-    address gRING = 0xe59B1124d36B51C42D5d66C5F5a9Be92aE1Ce204;
+    address gRING = 0x87BD07263D0Ed5687407B80FEB16F2E32C2BA44f;
+    address multisigPlugin = 0x005D4B92F66dB792b375c274550b11BE41BD93eB;
     address maintainer = 0x0f14341A7f464320319025540E8Fe48Ad0fe5aec;
 
     address pluginRepoFactory;
@@ -32,8 +33,6 @@ contract Deploy is Script {
     PluginRepo multisigPluginRepo;
     PluginRepo tokenVotingPluginRepo;
     PluginRepo optimisticTokenVotingPluginRepo;
-
-    address multisigPlugin = 0x3fE7328eCcBA0A12390C5cF75C61a502d779454f;
 
     DAO ringDAO;
 
