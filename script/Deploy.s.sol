@@ -19,6 +19,7 @@ import {
 
 contract Deploy is Script {
     address gRING = 0xe59B1124d36B51C42D5d66C5F5a9Be92aE1Ce204;
+    address maintainer = 0x0f14341A7f464320319025540E8Fe48Ad0fe5aec;
 
     address pluginRepoFactory;
     DAOFactory daoFactory;
@@ -31,6 +32,8 @@ contract Deploy is Script {
     PluginRepo multisigPluginRepo;
     PluginRepo tokenVotingPluginRepo;
     PluginRepo optimisticTokenVotingPluginRepo;
+
+    address multisigPlugin = 0x3fE7328eCcBA0A12390C5cF75C61a502d779454f;
 
     DAO ringDAO;
 
@@ -97,24 +100,24 @@ contract Deploy is Script {
             string.concat("ringdao-multisig-", vm.toString(block.timestamp)),
             address(multisigPluginSetup),
             msg.sender,
-            "0x00", // TODO: Give these actual values on prod
-            "0x00"
+            hex"12", // TODO: Give these actual values on prod
+            hex"34"
         );
 
         tokenVotingPluginRepo = PluginRepoFactory(pluginRepoFactory).createPluginRepoWithFirstVersion(
             string.concat("ringdao-token-voting-", vm.toString(block.timestamp)),
             address(tokenVotingPluginSetup),
             msg.sender,
-            "0x00", // TODO: Give these actual values on prod
-            "0x00"
+            hex"12", // TODO: Give these actual values on prod
+            hex"34"
         );
 
         optimisticTokenVotingPluginRepo = PluginRepoFactory(pluginRepoFactory).createPluginRepoWithFirstVersion(
             string.concat("ringdao-optimistic-token-voting-", vm.toString(block.timestamp)),
             address(optimisticTokenVotingPluginSetup),
             msg.sender,
-            "0x00", // TODO: Give these actual values on prod
-            "0x00"
+            hex"12", // TODO: Give these actual values on prod
+            hex"34"
         );
     }
 
@@ -131,10 +134,10 @@ contract Deploy is Script {
 
     function getMultisigPluginSetting() public view returns (DAOFactory.PluginSettings memory) {
         address[] memory members = new address[](1);
-        members[0] = 0x0f14341A7f464320319025540E8Fe48Ad0fe5aec;
+        members[0] = maintainer;
         bytes memory pluginSettingsData = abi.encode(
             members,
-            Multisig.MultisigSettings({onlyListed: true, minApprovals: 1, destinationProposalDuration: 15 minutes})
+            Multisig.MultisigSettings({onlyListed: true, minApprovals: 1, destinationProposalDuration: 60 minutes})
         );
         PluginRepo.Tag memory tag = PluginRepo.Tag(1, 1);
         return DAOFactory.PluginSettings(PluginSetupRef(tag, multisigPluginRepo), pluginSettingsData);
@@ -146,7 +149,7 @@ contract Deploy is Script {
                 votingMode: MajorityVotingBase.VotingMode.Standard,
                 supportThreshold: 500_000, // 50%
                 minParticipation: 1, // 0.0001%
-                minDuration: 10 minutes,
+                minDuration: 60 minutes,
                 minProposerVotingPower: 1e18
             }),
             TokenVotingPluginSetup.TokenSettings({addr: gRING, underlyingTotalSupply: 1_000_000_000e18})
@@ -156,12 +159,15 @@ contract Deploy is Script {
     }
 
     function getOptimisticTokenVotingPluginSetting() public view returns (DAOFactory.PluginSettings memory) {
+        address[] memory proposers = new address[](1);
+        proposers[0] = multisigPlugin;
         bytes memory pluginSettingsData = abi.encode(
             OptimisticTokenVotingPlugin.OptimisticGovernanceSettings({
                 minVetoRatio: 500_000, // 50%
-                minDuration: 10 minutes
+                minDuration: 60 minutes
             }),
-            OptimisticTokenVotingPluginSetup.TokenSettings({addr: gRING, underlyingTotalSupply: 1_000_000_000e18})
+            OptimisticTokenVotingPluginSetup.TokenSettings({addr: gRING, underlyingTotalSupply: 1_000_000_000e18}),
+            proposers
         );
         PluginRepo.Tag memory tag = PluginRepo.Tag(1, 1);
         return DAOFactory.PluginSettings(PluginSetupRef(tag, optimisticTokenVotingPluginRepo), pluginSettingsData);

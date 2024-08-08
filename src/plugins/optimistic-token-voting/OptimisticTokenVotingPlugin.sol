@@ -416,8 +416,8 @@ contract OptimisticTokenVotingPlugin is
             revert RatioOutOfBounds({limit: RATIO_BASE, actual: _governanceSettings.minVetoRatio});
         }
 
-        if (_governanceSettings.minDuration < 4 days) {
-            revert MinDurationOutOfBounds({limit: 4 days, actual: _governanceSettings.minDuration});
+        if (_governanceSettings.minDuration < 60 minutes) {
+            revert MinDurationOutOfBounds({limit: 60 minutes, actual: _governanceSettings.minDuration});
         }
 
         if (_governanceSettings.minDuration > 365 days) {

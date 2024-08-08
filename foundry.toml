@@ -16,5 +16,5 @@ koi = "https://koi-rpc.darwinia.network"
 crab = "https://crab-rpc.darwinia.network"
 
 [etherscan]
-koi = { key = "${ETHERSCAN_DARWINIA_KEY}", url = "https://koi-scan.darwinia.network/api" }
-crab = { key = "${ETHERSCAN_DARWINIA_KEY}", url = "https://crab-scan.darwinia.network/api" }
+koi = { key = "xxx", url = "https://koi-scan.darwinia.network/api" }
+crab = { key = "xxx", url = "https://crab-scan.darwinia.network/api" }

@@ -18,12 +18,6 @@
               "name": "minDuration",
               "type": "uint64",
               "description": "The minimum duration of the proposal vote in seconds."
-            },
-            {
-              "internalType": "uint256",
-              "name": "minProposerVotingPower",
-              "type": "uint256",
-              "description": "The minimum voting power required to create a proposal."
             }
           ],
           "internalType": "struct OptimisticTokenVotingPlugin.OptimisticGovernanceSettings",
