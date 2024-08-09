@@ -11,6 +11,7 @@ import {hashHelpers, PluginSetupRef} from "@aragon/osx/framework/plugin/setup/Pl
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 
 import {TokenVotingPluginSetup} from "../src/plugins/token-voting/TokenVotingPluginSetup.sol";
+import {DelegationWall} from "../src/DelegationWall.sol";
 
 contract Deploy is Script {
     address gRING = 0x87BD07263D0Ed5687407B80FEB16F2E32C2BA44f;
@@ -20,6 +21,7 @@ contract Deploy is Script {
     DAOFactory daoFactory;
     address[] pluginAddress;
 
+    DelegationWall delegationWall;
     TokenVotingPluginSetup tokenVotingPluginSetup;
     PluginRepo tokenVotingPluginRepo;
     DAO ringDAO;
@@ -36,6 +38,8 @@ contract Deploy is Script {
 
         console2.log("Chain ID:", block.chainid);
         console2.log("Deploying from:", msg.sender);
+
+        delegationWall = new DelegationWall();
 
         // 1. Deploying the Plugin Setup
         deployPluginSetup();
@@ -65,6 +69,7 @@ contract Deploy is Script {
         vm.stopBroadcast();
 
         // 7. Logging the resulting addresses
+        console2.log("Delegation Wall: ", address(delegationWall));
         console2.log("TokenVoting Plugin Setup: ", address(tokenVotingPluginSetup));
         console2.log("TokenVoting Plugin Repo: ", address(tokenVotingPluginRepo));
         console2.log("Ring DAO: ", address(ringDAO));
