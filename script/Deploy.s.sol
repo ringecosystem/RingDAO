@@ -79,8 +79,19 @@ contract Deploy is Script {
         }
     }
 
+    function getMinVotingPower() public view returns (uint256) {
+        if (block.chainid == 701) {
+            return 400e18;
+        } else if (block.chainid == 44) {
+            revert("TODO");
+        } else if (block.chainid == 46) {
+            return 40000000e18;
+        }
+    }
+
     function deployPluginSetup() public {
-        tokenVotingPluginSetup = new TokenVotingPluginSetup();
+        uint256 minVotingPower = getMinVotingPower();
+        tokenVotingPluginSetup = new TokenVotingPluginSetup(minVotingPower);
     }
 
     function deployPluginRepo() public {
@@ -111,7 +122,7 @@ contract Deploy is Script {
                 minDuration: 60 minutes,
                 minProposerVotingPower: 1e18
             }),
-            TokenVotingPluginSetup.TokenSettings({addr: gRING, underlyingTotalSupply: 1_000_000_000e18})
+            TokenVotingPluginSetup.TokenSettings({addr: gRING})
         );
         PluginRepo.Tag memory tag = PluginRepo.Tag(1, 1);
         return DAOFactory.PluginSettings(PluginSetupRef(tag, tokenVotingPluginRepo), pluginSettingsData);
