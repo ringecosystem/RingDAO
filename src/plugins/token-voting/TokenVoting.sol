@@ -17,7 +17,7 @@ import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 
-/// @title TokenVoting
+/// @title TokenVoting - Release 1, Build 1
 /// @author Aragon Association - 2021-2023
 /// @notice The majority voting implementation using an [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes) compatible governance token.
 /// @dev This contract inherits from `MajorityVotingBase` and implements the `IMajorityVoting` interface.
