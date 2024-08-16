@@ -32,10 +32,8 @@ contract TokenVotingPluginSetup is PluginSetup {
 
     /// @notice The token settings struct.
     /// @param addr The voting token contract address.
-    /// @param underlyingTotalSupply Total supply of underlying token in voting token.
     struct TokenSettings {
         address addr;
-        uint256 underlyingTotalSupply;
     }
 
     /// @notice Thrown if token address is passed which is not a token.
@@ -55,8 +53,8 @@ contract TokenVotingPluginSetup is PluginSetup {
     error WrongHelpersArrayLength(uint256 length);
 
     /// @notice The contract constructor deploying the plugin implementation contract.
-    constructor() {
-        tokenVotingBase = new TokenVoting();
+    constructor(uint256 minVotingPower) {
+        tokenVotingBase = new TokenVoting(minVotingPower);
     }
 
     /// @inheritdoc IPluginSetup
@@ -93,10 +91,7 @@ contract TokenVotingPluginSetup is PluginSetup {
         // Prepare and deploy plugin proxy.
         plugin = createERC1967Proxy(
             address(tokenVotingBase),
-            abi.encodeCall(
-                TokenVoting.initialize,
-                (IDAO(_dao), votingSettings, IVotesUpgradeable(token), tokenSettings.underlyingTotalSupply)
-            )
+            abi.encodeCall(TokenVoting.initialize, (IDAO(_dao), votingSettings, IVotesUpgradeable(token)))
         );
 
         // Prepare permissions

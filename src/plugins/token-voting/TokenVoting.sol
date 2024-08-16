@@ -27,32 +27,32 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 internal constant TOKEN_VOTING_INTERFACE_ID = this.initialize.selector ^ this.getVotingToken.selector;
 
+    /// @notice The minimum voting power needed.
+    uint256 public immutable MIN_VOTING_POWER;
+
     /// @notice An [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes) compatible contract referencing the token being used for voting.
     IERC5805Upgradeable private votingToken;
 
-    /// @notice Total supply of underlying token in voting token.
-    uint256 public underlyingTotalSupply;
-
     /// @notice Thrown if the voting power is zero
     error NoVotingPower();
+
+    /// @notice The implementation constructor.
+    constructor(uint256 minVotingPower) {
+        MIN_VOTING_POWER = minVotingPower;
+    }
 
     /// @notice Initializes the component.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     /// @param _dao The IDAO interface of the associated DAO.
     /// @param _votingSettings The voting settings.
     /// @param _token The [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token used for voting.
-    /// @param _underlyingTotalSupply The Total supply of underlying token in the voting token..
-    function initialize(
-        IDAO _dao,
-        VotingSettings calldata _votingSettings,
-        IVotesUpgradeable _token,
-        uint256 _underlyingTotalSupply
-    ) external initializer {
+    function initialize(IDAO _dao, VotingSettings calldata _votingSettings, IVotesUpgradeable _token)
+        external
+        initializer
+    {
         __MajorityVotingBase_init(_dao, _votingSettings);
 
         votingToken = IERC5805Upgradeable(address(_token));
-
-        underlyingTotalSupply = _underlyingTotalSupply;
 
         emit MembershipContractAnnounced({definingContract: address(_token)});
     }
@@ -73,8 +73,8 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
     }
 
     /// @inheritdoc MajorityVotingBase
-    function totalVotingPower(uint256) public view override returns (uint256) {
-        return underlyingTotalSupply;
+    function totalVotingPower(uint256 _timepoint) public view override returns (uint256) {
+        return votingToken.getPastTotalSupply(_timepoint);
     }
 
     /// @dev Clock (as specified in EIP-6372) is set to match the token's clock. Fallback to block numbers if the token
@@ -95,16 +95,6 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
         } catch {
             return "mode=blocknumber&from=default";
         }
-    }
-
-    /// @notice Updates the total supply of underlying token in voting token.
-    /// @param _underlyingTotalSupply The new total supply of underlying token in voting token.
-    function updateUnderlyingTotalSupply(uint256 _underlyingTotalSupply)
-        external
-        virtual
-        auth(UPDATE_VOTING_SETTINGS_PERMISSION_ID)
-    {
-        underlyingTotalSupply = _underlyingTotalSupply;
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -160,7 +150,7 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
         proposal_.parameters.snapshotTimepoint = snapshotTimepoint;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
-        proposal_.parameters.minVotingPower = _applyRatioCeiled(totalVotingPower_, minParticipation());
+        proposal_.parameters.minVotingPower = MIN_VOTING_POWER;
 
         // Reduce costs
         if (_allowFailureMap != 0) {
@@ -259,20 +249,12 @@ contract TokenVoting is IMembership, IERC6372Upgradeable, MajorityVotingBase {
     }
 
     /// @inheritdoc MajorityVotingBase
-    function isSupportThresholdReachedEarly(uint256 _proposalId) public view virtual override returns (bool) {
-        Proposal storage proposal_ = proposals[_proposalId];
-
-        uint256 noVotesWorstCase =
-            totalVotingPower(proposal_.parameters.snapshotTimepoint) - proposal_.tally.yes - proposal_.tally.abstain;
-
-        // The code below implements the formula of the early execution support criterion explained in the top of this file.
-        // `(1 - supportThreshold) * N_yes > supportThreshold *  N_no,worst-case`
-        return (RATIO_BASE - proposal_.parameters.supportThreshold) * proposal_.tally.yes
-            > proposal_.parameters.supportThreshold * noVotesWorstCase;
+    function isSupportThresholdReachedEarly(uint256) public view virtual override returns (bool) {
+        return false;
     }
 
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting down storage in the inheritance chain.
     /// https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-    uint256[48] private __gap;
+    uint256[49] private __gap;
 }
