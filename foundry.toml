@@ -16,7 +16,9 @@ etherscan_api_key = "xxx"
 [rpc_endpoints]
 koi = "https://koi-rpc.darwinia.network"
 crab = "https://crab-rpc.darwinia.network"
+darwinia = "https://rpc.darwinia.network"
 
 [etherscan]
 koi = { key = "xxx", url = "https://koi-scan.darwinia.network/api", chain = 701 }
 crab = { key = "xxx", url = "https://crab-scan.darwinia.network/api", chain = 44 }
+darwinia = { key = "xxx", url = "https://explorer.darwinia.network/api", chain = 46 }

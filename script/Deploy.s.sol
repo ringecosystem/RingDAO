@@ -14,7 +14,7 @@ import {TokenVotingPluginSetup} from "../src/plugins/token-voting/TokenVotingPlu
 import {DelegationWall} from "../src/DelegationWall.sol";
 
 contract Deploy is Script {
-    address gRING = 0x87BD07263D0Ed5687407B80FEB16F2E32C2BA44f;
+    address gRING = 0xd677D6461870DD88B915EBa76954D1a15114B42d;
     address maintainer = 0x0f14341A7f464320319025540E8Fe48Ad0fe5aec;
 
     address pluginRepoFactory;
