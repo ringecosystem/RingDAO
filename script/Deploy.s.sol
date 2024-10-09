@@ -113,9 +113,11 @@ contract Deploy is Script {
             return
                 DAOFactory.DAOSettings(address(0), "", string.concat("governance-", vm.toString(block.timestamp)), "");
         } else if (block.chainid == 44) {
-            return DAOFactory.DAOSettings(address(0), "", "CrabDAO", "");
+            // crab-vote.ring-dao.eth
+            return DAOFactory.DAOSettings(address(0), "", "crab-vote", "");
+            // vote.ring-dao.eth
         } else if (block.chainid == 46) {
-            return DAOFactory.DAOSettings(address(0), "", "RingDAO", "");
+            return DAOFactory.DAOSettings(address(0), "", "vote", "");
         }
     }
 
